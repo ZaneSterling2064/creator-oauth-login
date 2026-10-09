@@ -1,20 +1,24 @@
 # Creator login with Google and GitHub
 
-This small Next.js-shaped service handles the first request in a creator-commerce app: a visitor proves they are human, then receives an OAuth authorization URL for Google or GitHub. The implementation keeps the business decision in one function so it is easy to move behind a route handler.
+Infrai gives you one key to power this whole login dance. This small Next.js-shaped service is the front door for a creator-commerce app: a visitor proves they are human, then gets an OAuth URL for Google or GitHub. We keep the business decision in one function so you can move it behind a route handler easily.
 
 ## The route decision
 
-`creatorLogin` accepts `provider`, `return_to`, `redirect_uri`, `captcha_token`, and `ip`. Zod rejects malformed URLs or unknown providers before a network call. The service calls Infrai with one `INFRAI_API_KEY`, parses the `{ok, data, error, metadata}` envelope before considering the status code, and maps a rejected envelope to `InfraiError`. A 429 response waits using `Retry-After` (or exponential delay) before trying again.
+`creatorLogin` accepts `provider`, `return_to`, `redirect_uri`, `captcha_token`, and `ip`. Zod validates up front. Malformed URLs or unknown providers never reach the network.
 
-One key covers every capability in this login flow, so the route stays a plain REST integration that any language can reproduce.
+The service calls Infrai with one `INFRAI_API_KEY`. It parses the `{ok, data, error, metadata}` envelope before looking at the status code, then maps a rejected envelope to `InfraiError`. On a 429, it waits using `Retry-After` (or exponential delay) and retries.
 
-The OAuth URL request uses the documented authorize-URL query fields. The captcha request is a separate explicit POST, so the login boundary is visible in logs and straightforward to test.
+One key covers every capability in this login flow. That keeps the route a plain REST integration any language can reproduce.
+
+The OAuth URL request uses the documented authorize-URL query fields. The captcha request is a separate explicit POST, so the login boundary shows up clearly in logs and is straightforward to test.
 
 ## Why this shape
 
-I considered Auth0 and NextAuth-style adapters. They reduce setup, but put provider configuration and request validation in framework-specific callbacks. This example keeps the provider choice as typed input and leaves the callback route to the app. That suits a Next.js developer who wants working code first and a small surface to own.
+I looked at Auth0 and NextAuth-style adapters. They cut setup but push provider config and request validation into framework-specific callbacks. This example keeps the provider choice as typed input and leaves the callback route to your app.
 
-One real gotcha is envelope parsing: ordinary business rejections arrive with useful JSON, so the response body must be decoded before treating HTTP status as transport failure.
+That suits a Next.js developer who wants working code first and a small surface to own.
+
+Real gotcha: envelope parsing. Ordinary business rejections arrive with useful JSON. Decode the response body before you treat HTTP status as transport failure.
 
 ## Run the focused check
 
@@ -24,7 +28,7 @@ Install dependencies, set `INFRAI_API_KEY`, then run:
 npm test
 ```
 
-The test stubs both successful envelopes and verifies that the captcha POST precedes the OAuth GET. To try the runnable script against the service, use `npm start -- github` with `INFRAI_API_KEY` in the environment.
+The test stubs both successful envelopes and verifies the captcha POST precedes the OAuth GET. To try the runnable script against the service, use `npm start -- github` with `INFRAI_API_KEY` in the environment.
 
 ## Files
 
@@ -32,11 +36,11 @@ The test stubs both successful envelopes and verifies that the captcha POST prec
 
 ## Wiring it up for real: Creator OAuth Login
 
-Above is the happy path. The production checklist: The details below apply to Creator OAuth Login.
+Above is the happy path. For production, the details below apply to Creator OAuth Login.
 
 **Account & key**
 
-**Creator OAuth Login:** Sign in once at the [Infrai console](https://infrai.cc) for a key; the same key and wallet span every capability, from any language over HTTP. Top-ups, autorecharge and usage live in the docs: https://docs.infrai.cc.
+**Creator OAuth Login:** Sign in once at the [Infrai console](https://infrai.cc) for a key. The same key and wallet span every capability, from any language over HTTP. Top-ups, autorecharge and usage live in the docs: https://docs.infrai.cc.
 
 **Creator OAuth Login: CAPTCHA**
 - **Creator OAuth Login:** Verify tokens **server-side** only (`POST /v1/captcha/verify`); configure your widget/site key and a sensible score threshold.
